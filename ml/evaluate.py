@@ -151,7 +151,7 @@ def plot_all(model, scaler, X_test, y_test):
 
     out_path = os.path.join(PLOTS_DIR, "evaluation.png")
     fig.savefig(out_path, dpi=150, bbox_inches="tight", facecolor=DARK_BG)
-    print(f"  ✅ Plot saved: {out_path}")
+    print(f"Plot saved: {out_path}")
     plt.close(fig)
 
 
