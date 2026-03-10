@@ -1,180 +1,180 @@
-# 📡 NetworkLab — Phone-Powered Network Intelligence System
+# NetworkLab
 
-> A real-world network monitoring and ML inference pipeline running on an Android phone (Termux) + Linux laptop — no root required.
+Network monitoring project running on an old Android phone (Huawei Y6 2018) through Termux, without root.
 
-![Architecture](docs/screenshots/architecture.png)
-
-## 🧠 What This Project Does
-
-A **non-rooted Android phone** (Huawei Y6 2018) running **Termux** acts as a network intelligence agent:
-
-- Continuously **monitors network health** (latency, packet loss, HTTP response times, DNS speed, WiFi signal, interface I/O stats)
-- Runs a **lightweight ML model locally** (Isolation Forest anomaly detection) for edge inference
-- Streams metrics to a **Flask web server** on a laptop via REST API
-- Server stores data in **SQLite** and serves a **real-time dashboard** with live charts
-- ML model is **trained on the laptop** and deployed back to the phone
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    ARCHITECTURE OVERVIEW                        │
-│                                                                 │
-│  📱 PHONE (Termux - No Root)          💻 LAPTOP (Linux Mint)    │
-│  ┌─────────────────────────┐          ┌───────────────────────┐ │
-│  │  Network Collectors     │          │  Flask Web Server     │ │
-│  │  ├─ ping_monitor.py     │  HTTP    │  ├─ REST API          │ │
-│  │  ├─ http_monitor.py     │ ──────►  │  ├─ SQLite DB         │ │
-│  │  ├─ net_stats.py        │  POST    │  └─ WebSocket         │ │
-│  │  └─ wifi_info.py        │          └───────────┬───────────┘ │
-│  │                         │                      │             │
-│  │  ML Inference           │  model.pkl           │             │
-│  │  └─ anomaly_detector.py │ ◄────────────────────┤             │
-│  │      (Isolation Forest) │                      │             │
-│  └─────────────────────────┘               ┌──────▼──────────┐  │
-│                                            │   Dashboard     │  │
-│                                            │  (Chart.js +    │  │
-│                                            │   WebSocket)    │  │
-│                                            └─────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Phone Agent | Python 3, psutil, requests, scikit-learn |
-| Network Probes | ping, urllib, socket, Termux:API |
-| ML Model | scikit-learn (Isolation Forest) |
-| Web Server | Flask, Flask-SocketIO |
-| Database | SQLite3 |
-| Dashboard | HTML5, Chart.js, Socket.IO JS |
-| Platform | Android (Termux) + Linux Mint |
-
-## 📁 Project Structure
-
-```
-network-lab/
-├── phone_agent/          # 📱 Everything that runs on the phone
-│   ├── setup.sh          #    One-command Termux setup
-│   ├── agent.py          #    Main monitoring agent
-│   ├── config.py         #    Configuration (server IP, targets)
-│   ├── collectors/
-│   │   ├── ping_monitor.py   # ICMP latency via subprocess ping
-│   │   ├── http_monitor.py   # HTTP response time probes
-│   │   ├── net_stats.py      # Interface I/O via psutil
-│   │   └── wifi_info.py      # WiFi info via Termux:API
-│   └── inference/
-│       └── anomaly_detector.py  # Edge ML inference
-│
-├── server/               # 💻 Runs on the laptop
-│   ├── app.py            #    Flask + SocketIO server
-│   ├── database.py       #    SQLite helpers
-│   ├── templates/
-│   │   └── dashboard.html
-│   └── static/
-│       ├── css/style.css
-│       └── js/dashboard.js
-│
-├── ml/                   # 🤖 Model training (on laptop)
-│   ├── generate_sample_data.py  # Bootstrap initial training data
-│   ├── train.py                 # Train Isolation Forest
-│   ├── evaluate.py              # Model evaluation + plots
-│   └── models/                  # Saved model artifacts
-│
-└── docs/
-    └── architecture.md
-```
-
-## 🚀 Quick Start
-
-### Step 1 — Laptop: Clone & Set Up Server
-
-```bash
-git clone https://github.com/YOUR_USERNAME/network-lab.git
-cd network-lab/server
-pip install -r requirements.txt
-python app.py
-```
-
-Server starts at `http://0.0.0.0:5000`
-
-### Step 2 — Laptop: Find Your Local IP
-
-```bash
-ip addr show | grep "inet " | grep -v 127.0.0.1
-# Example: 192.168.1.105
-```
-
-### Step 3 — Phone (Termux): Setup
-
-```bash
-pkg update && pkg upgrade -y
-bash phone_agent/setup.sh
-```
-
-### Step 4 — Phone: Configure & Run
-
-Edit `phone_agent/config.py` and set `SERVER_URL = "http://192.168.1.105:5000"`
-
-```bash
-cd phone_agent
-python agent.py
-```
-
-### Step 5 — Train the ML Model
-
-```bash
-cd ml
-python generate_sample_data.py   # Creates initial training data
-python train.py                   # Trains model, saves to ml/models/
-# Copy model to phone:
-cp ml/models/anomaly_model.pkl phone_agent/inference/
-```
-
-### Step 6 — View Dashboard
-
-Open browser: `http://localhost:5000`
+The idea was to use the phone as some kind of network monitoring device since it was just sitting around doing nothing. It collects network metrics, runs a small ML model locally on the phone, and sends everything to a Flask server on my laptop where you can see it on a dashboard.
 
 ---
 
-## 📊 Dashboard Features
+## What it does
 
-- **Live metrics feed** via WebSocket
-- **Latency time series** chart (last 100 samples)
-- **Packet loss** trend
-- **Network I/O** (bytes sent/received per second)
-- **WiFi signal strength** gauge
-- **Anomaly alerts** highlighted in red
-- **Summary statistics** (avg latency, uptime, total anomalies)
+- Pings a few DNS servers every 30 seconds and measures latency/packet loss
+- Measures HTTP response times to a few websites
+- Reads network interface stats (download/upload speeds) through psutil
+- Gets WiFi signal strength through Termux:API
+- Runs an Isolation Forest model locally on the phone to detect if something looks off with the network
+- Sends all of this to a Flask server running on my laptop
+- The server saves everything in SQLite and shows it on a live dashboard
 
-## 🤖 Machine Learning Details
+---
 
-**Model:** Isolation Forest (unsupervised anomaly detection)
+## Architecture
 
-**Features used for training/inference:**
-- `latency_avg` — average ping latency (ms)
-- `latency_std` — latency jitter (ms)
-- `packet_loss` — percentage of dropped packets
-- `http_response_time` — HTTP probe time (ms)
-- `bytes_recv_rate` — download rate (bytes/s)
-- `bytes_sent_rate` — upload rate (bytes/s)
-- `dns_time` — DNS resolution time (ms)
-- `wifi_signal` — WiFi RSSI (dBm)
+```
+  PHONE (Termux, no root)              LAPTOP (Linux Mint)
 
-**Why Isolation Forest?**
-- Unsupervised — no labeled anomaly data needed
-- Extremely lightweight (fits in <1MB)
-- Fast inference (< 5ms on Snapdragon 425)
-- Great for novelty/anomaly detection in time series
+  collectors/
+    ping_monitor.py   ──────────►   Flask server (app.py)
+    http_monitor.py      HTTP            |
+    net_stats.py         POST       SQLite database
+    wifi_info.py                         |
+                                    Dashboard (Chart.js
+  inference/                         + WebSocket)
+    anomaly_detector.py
+    (runs model.pkl locally)
+         ^
+         |
+         model.pkl (trained on laptop, copied to phone)
+```
 
-## ⚠️ Non-Root Limitations & Workarounds
+---
 
-| Feature | Root Needed? | Workaround Used |
+## Tech stack
+
+- Phone agent: Python, psutil, requests, scikit-learn
+- Network probes: subprocess ping, urllib, socket, Termux:API
+- ML: scikit-learn Isolation Forest
+- Server: Flask, Flask-SocketIO
+- Database: SQLite
+- Dashboard: plain HTML, Chart.js, Socket.IO
+
+---
+
+## Project structure
+
+```
+network-lab/
+├── phone_agent/
+│   ├── agent.py              # main script, this is what you run on the phone
+│   ├── config.py             # put your laptop IP here before running
+│   ├── setup.sh              # installs everything needed in Termux
+│   ├── collectors/
+│   │   ├── ping_monitor.py
+│   │   ├── http_monitor.py
+│   │   ├── net_stats.py
+│   │   └── wifi_info.py
+│   └── inference/
+│       └── anomaly_detector.py
+│
+├── server/
+│   ├── app.py
+│   ├── database.py
+│   └── templates/
+│       └── dashboard.html
+│
+└── ml/
+    ├── generate_sample_data.py
+    ├── train.py
+    ├── evaluate.py
+    └── models/
+```
+
+---
+
+## Setup
+
+Full step-by-step instructions are in [SETUP_GUIDE.md](SETUP_GUIDE.md). Short version below.
+
+### Laptop
+
+```bash
+git clone https://github.com/YOUR_USERNAME/network-lab.git
+cd network-lab
+
+# install server dependencies
+pip install -r server/requirements.txt
+
+# generate training data and train the model
+pip install -r ml/requirements.txt
+python ml/generate_sample_data.py
+python ml/train.py
+
+# find your local IP (you'll need this for the phone config)
+ip addr show | grep "inet " | grep -v 127.0.0.1
+
+# start the server
+python server/app.py
+```
+
+Dashboard will be at `http://localhost:5000`
+
+### Phone (Termux)
+
+```bash
+pkg update && pkg upgrade -y
+pkg install git -y
+
+git clone https://github.com/YOUR_USERNAME/network-lab.git
+cd network-lab
+
+bash phone_agent/setup.sh
+```
+
+Edit `phone_agent/config.py` and change `SERVER_URL` to your laptop's IP address.
+
+Copy the trained model to the phone (easiest way is a quick HTTP server):
+
+```bash
+# on laptop:
+cd ml/models
+python -m http.server 8888
+
+# on phone (Termux):
+cd ~/network-lab/phone_agent/inference
+curl http://YOUR_LAPTOP_IP:8888/anomaly_model.pkl -o anomaly_model.pkl
+curl http://YOUR_LAPTOP_IP:8888/scaler.pkl -o scaler.pkl
+```
+
+Then start the agent:
+
+```bash
+cd ~/network-lab/phone_agent
+python agent.py
+```
+
+---
+
+## ML model
+
+Uses Isolation Forest from scikit-learn. It's unsupervised so there's no need to label data, it just learns what "normal" network traffic looks like and flags anything that deviates from that.
+
+Features: latency avg/std/min/max, packet loss, HTTP response time, bytes sent/recv rate, DNS time, WiFi signal.
+
+The model is trained on the laptop and the .pkl file is copied to the phone. Inference runs fully offline on the phone, takes under 5ms on the Snapdragon 425.
+
+---
+
+## No-root limitations
+
+Some things don't work without root, so workarounds were used:
+
+| What | Root needed | What I used instead |
 |---|---|---|
-| Packet capture (tcpdump) | ✅ Yes | psutil interface counters instead |
-| Raw sockets | ✅ Yes | subprocess ping for ICMP |
-| Monitor mode WiFi | ✅ Yes | Termux:API WiFi info |
-| ARP scanning | ✅ Yes | HTTP probes to common IPs |
+| tcpdump / packet capture | yes | psutil interface counters |
+| raw sockets | yes | subprocess ping |
+| WiFi monitor mode | yes | Termux:API |
+| ARP scan | yes | HTTP probes |
 
-## 📄 License
+---
 
-MIT License — see [LICENSE](LICENSE)
+## Notes
+
+- Phone needs to be on the same WiFi network as the laptop
+- Termux:API app needs to be installed separately from F-Droid (not Play Store)
+- The generated training data is synthetic — after collecting a few hours of real data from the phone you can retrain the model on that instead, it'll be more accurate
+
+---
+
+## License
+
+MIT
