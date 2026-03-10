@@ -26,11 +26,10 @@ from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 from datetime import datetime
 
-# Add parent dir to path for relative imports during dev
 sys.path.insert(0, os.path.dirname(__file__))
 import database as db
 
-# ── App setup ──────────────────────────────────────────────
+# App setup
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "networklab-dev-secret-2025")
 app.config["JSON_SORT_KEYS"] = False
@@ -46,14 +45,14 @@ logging.basicConfig(
 logger = logging.getLogger("server")
 
 
-# ── HTML Routes ────────────────────────────────────────────
+# HTML Routes
 @app.route("/")
 def dashboard():
     """Serve the main dashboard."""
     return render_template("dashboard.html")
 
 
-# ── REST API ───────────────────────────────────────────────
+# REST API
 @app.route("/api/metrics", methods=["POST"])
 def receive_metrics():
     """
@@ -88,7 +87,7 @@ def receive_metrics():
         })
 
     logger.info(
-        f"📥 Metrics from [{data.get('device_id', '?')}] "
+        f"Metrics from [{data.get('device_id', '?')}] "
         f"latency={data.get('latency_avg')}ms "
         f"anomaly={bool(data.get('is_anomaly'))} "
         f"(row_id={row_id})"
@@ -100,7 +99,7 @@ def receive_metrics():
 @app.route("/api/data")
 def get_data():
     """
-    Return recent metrics for chart rendering.
+    Return recent metrics for chart rendering
     Query params:
       limit (int, default=100) — number of most recent rows
       device (str, optional)   — filter by device_id
@@ -114,7 +113,7 @@ def get_data():
 
 @app.route("/api/stats")
 def get_stats():
-    """Return aggregate summary statistics."""
+    #Return aggregate summary statistics
     device = request.args.get("device", None)
     stats = db.get_summary_stats(device_id=device)
     return jsonify(stats)
@@ -122,7 +121,7 @@ def get_stats():
 
 @app.route("/api/anomalies")
 def get_anomalies():
-    """Return recent anomaly events."""
+    #Return recent anomaly events
     limit = request.args.get("limit", 20, type=int)
     anomalies = db.get_anomaly_history(limit=limit)
     return jsonify(anomalies)
@@ -130,7 +129,7 @@ def get_anomalies():
 
 @app.route("/api/health")
 def health():
-    """Health check endpoint."""
+    #Health check 
     return jsonify({
         "status": "ok",
         "timestamp": datetime.utcnow().isoformat() + "Z",
@@ -138,10 +137,10 @@ def health():
     })
 
 
-# ── WebSocket events ───────────────────────────────────────
+# WebSocket events
 @socketio.on("connect")
 def on_connect():
-    logger.info(f"🔌 Dashboard client connected: {request.sid}")
+    logger.info(f"Dashboard client connected: {request.sid}")
     # Send last 10 rows immediately on connect
     rows = db.get_recent_metrics(limit=10)
     emit("history", rows)
@@ -149,17 +148,15 @@ def on_connect():
 
 @socketio.on("disconnect")
 def on_disconnect():
-    logger.info(f"🔌 Dashboard client disconnected: {request.sid}")
+    logger.info(f"Dashboard client disconnected: {request.sid}")
 
 
-# ── Entry point ────────────────────────────────────────────
+# Entry point 
 if __name__ == "__main__":
     print("""
-╔══════════════════════════════════════════╗
-║  NetworkLab Server  v1.0                 ║
-║  Dashboard → http://localhost:5000       ║
-║  API       → http://localhost:5000/api   ║
-╚══════════════════════════════════════════╝
+  NetworkLab Server  v1.0                 
+  Dashboard → http://localhost:5000      
+  API       → http://localhost:5000/api   
 """)
     db.init_db()
     socketio.run(

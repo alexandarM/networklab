@@ -208,7 +208,7 @@
 
 <header>
   <div class="logo">
-    📡 <span>Network</span>Lab
+    <span>Network</span>Lab
     <span style="color:var(--text2);font-size:12px;font-weight:400">— Real-time Monitor</span>
   </div>
   <div class="header-right">
@@ -266,27 +266,27 @@
   <!-- Charts -->
   <div class="charts-grid">
     <div class="chart-card">
-      <div class="chart-title">⏱ Latency (ms)</div>
+      <div class="chart-title">Latency (ms)</div>
       <div class="chart-wrap"><canvas id="chart-latency"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">📉 Packet Loss (%)</div>
+      <div class="chart-title">Packet Loss (%)</div>
       <div class="chart-wrap"><canvas id="chart-loss"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">🌐 HTTP Response Time (ms)</div>
+      <div class="chart-title">HTTP Response Time (ms)</div>
       <div class="chart-wrap"><canvas id="chart-http"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">📶 WiFi Signal (dBm)</div>
+      <div class="chart-title">WiFi Signal (dBm)</div>
       <div class="chart-wrap"><canvas id="chart-wifi"></canvas></div>
     </div>
     <div class="chart-card full-width">
-      <div class="chart-title">📊 Network I/O — Download & Upload (bytes/s)</div>
+      <div class="chart-title">Network I/O — Download & Upload (bytes/s)</div>
       <div class="chart-wrap"><canvas id="chart-io"></canvas></div>
     </div>
     <div class="chart-card full-width">
-      <div class="chart-title">🤖 ML Anomaly Score (0 = normal, 1 = anomaly)</div>
+      <div class="chart-title">ML Anomaly Score (0 = normal, 1 = anomaly)</div>
       <div class="chart-wrap"><canvas id="chart-anomaly"></canvas></div>
     </div>
   </div>
@@ -294,7 +294,7 @@
   <!-- Anomaly table -->
   <div class="anomaly-section">
     <div class="section-title">
-      🚨 Recent Anomaly Events
+      Recent Anomaly Events
       <span class="badge" id="anomaly-count">0</span>
     </div>
     <table id="anomaly-table">
@@ -319,7 +319,7 @@
 <div id="toast-container"></div>
 
 <script>
-// ── Chart.js global defaults ─────────────────────────────
+// Chart.js global defaults 
 Chart.defaults.color = '#8b949e';
 Chart.defaults.borderColor = '#30363d';
 Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
@@ -327,7 +327,7 @@ Chart.defaults.font.size = 11;
 
 const MAX_POINTS = 60;
 
-// ── Helper: create a line chart ──────────────────────────
+// create a line chart 
 function makeChart(id, label, color, fill = false) {
   const ctx = document.getElementById(id).getContext('2d');
   return new Chart(ctx, {
@@ -402,7 +402,7 @@ function makeIOChart() {
   });
 }
 
-// ── Create all charts ───────────────────────────────────
+// Create all charts 
 const charts = {
   latency: makeChart('chart-latency', 'Latency avg (ms)', '#58a6ff', true),
   loss:    makeChart('chart-loss',    'Packet Loss (%)', '#f85149', true),
@@ -412,7 +412,7 @@ const charts = {
   anomaly: makeChart('chart-anomaly', 'Anomaly Score', '#f85149', true),
 };
 
-// ── Utilities ───────────────────────────────────────────
+//  Utilities 
 function fmtTime(iso) {
   if (!iso) return '';
   const d = new Date(iso);
@@ -447,7 +447,7 @@ function setText(id, value, unit = '') {
     : '—';
 }
 
-// ── Update dashboard with new metrics ──────────────────
+// Update dashboard with new metrics 
 function updateDashboard(m) {
   const t = fmtTime(m.timestamp);
 
@@ -503,12 +503,12 @@ function updateDashboard(m) {
   document.getElementById('last-update').textContent = `Last update: ${t}`;
 }
 
-// ── Load history into charts ────────────────────────────
+// Load history into charts 
 function loadHistory(rows) {
   rows.forEach(m => updateDashboard(m));
 }
 
-// ── Anomaly table ───────────────────────────────────────
+// Anomaly table 
 let anomalyCount = 0;
 function addAnomalyRow(m) {
   const tbody = document.getElementById('anomaly-tbody');
@@ -533,12 +533,12 @@ function addAnomalyRow(m) {
   while (tbody.children.length > 20) tbody.removeChild(tbody.lastChild);
 }
 
-// ── Toast notification ──────────────────────────────────
+// Toast notification 
 function showToast(title, body) {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
   toast.className = 'toast';
-  toast.innerHTML = `<div class="toast-title">🚨 ${title}</div><div class="toast-body">${body}</div>`;
+  toast.innerHTML = `<div class="toast-title"> ${title}</div><div class="toast-body">${body}</div>`;
   container.appendChild(toast);
   setTimeout(() => {
     toast.style.opacity = '0';
@@ -547,13 +547,13 @@ function showToast(title, body) {
   }, 5000);
 }
 
-// ── Socket.IO connection ────────────────────────────────
+// Socket.IO connection 
 const socket = io();
 const dot = document.getElementById('status-dot');
 
 socket.on('connect', () => {
   dot.classList.remove('offline');
-  console.log('✅ Connected to server');
+  console.log('Connected to server');
 });
 
 socket.on('disconnect', () => {
@@ -577,13 +577,13 @@ socket.on('anomaly_alert', (alert) => {
   );
 });
 
-// ── Fetch recent anomalies on load ──────────────────────
+// Fetch recent anomalies on load 
 fetch('/api/anomalies?limit=10')
   .then(r => r.json())
   .then(data => data.forEach(m => addAnomalyRow(m)))
   .catch(() => {});
 
-// ── Fallback: poll API if WebSocket unavailable ─────────
+// Fallback: poll API if WebSocket unavailable 
 let lastId = 0;
 setInterval(() => {
   if (!socket.connected) {

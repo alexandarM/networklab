@@ -16,7 +16,7 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "data", "metrics.db")
 
 
 def init_db():
-    """Create the database and tables if they don't exist."""
+    #Create the database and tables if they don't eixst
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     with get_conn() as conn:
         conn.executescript("""
@@ -79,10 +79,10 @@ def init_db():
 
 @contextmanager
 def get_conn():
-    """Context manager for SQLite connections."""
+    #Context manager for SQLite connections
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row  # Rows behave like dicts
-    conn.execute("PRAGMA journal_mode=WAL")  # Better concurrency
+    conn.row_factory = sqlite3.Row  # Rows are like dicts
+    conn.execute("PRAGMA journal_mode=WAL")  # 
     try:
         yield conn
         conn.commit()
@@ -94,7 +94,7 @@ def get_conn():
 
 
 def insert_metrics(data: dict) -> Optional[int]:
-    """Insert a metrics dict into the database. Returns new row id."""
+    
     fields = [
         "timestamp", "device_id",
         "latency_avg", "latency_min", "latency_max", "latency_std", "packet_loss",
@@ -122,7 +122,7 @@ def insert_metrics(data: dict) -> Optional[int]:
 
 
 def get_recent_metrics(limit: int = 100, device_id: str = None) -> list:
-    """Return the most recent metric rows as list of dicts."""
+    
     query = "SELECT * FROM metrics"
     params = []
     if device_id:
@@ -137,7 +137,7 @@ def get_recent_metrics(limit: int = 100, device_id: str = None) -> list:
 
 
 def get_summary_stats(device_id: str = None) -> dict:
-    """Return aggregate statistics for the summary panel."""
+    
     where = "WHERE device_id = ?" if device_id else ""
     params = [device_id] if device_id else []
 
@@ -164,7 +164,7 @@ def get_summary_stats(device_id: str = None) -> dict:
 
 
 def get_anomaly_history(limit: int = 20) -> list:
-    """Return the most recent anomalous events."""
+    
     with get_conn() as conn:
         rows = conn.execute(
             """SELECT timestamp, device_id, latency_avg, packet_loss,
