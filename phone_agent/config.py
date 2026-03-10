@@ -1,4 +1,4 @@
-# Edit SERVER_URL to match your laptop's local IP address
+# Edit SERVER_URL to match your laptop local IP address
 
 # Server
 SERVER_URL = "http://192.168.1.105:5000"   # CHANGE to your PCs IP 
@@ -8,7 +8,7 @@ SEND_INTERVAL = 30       # seconds between each data push to server
 # Device 
 DEVICE_ID = "huawei-y6-2018"
 
-# ── Ping targets ───────────────────────────────────────────
+# Ping targets
 PING_TARGETS = [
     "8.8.8.8",        # Google DNS
     "1.1.1.1",        # Cloudflare DNS
