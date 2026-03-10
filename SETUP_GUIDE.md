@@ -1,262 +1,227 @@
-# 🛠️ NetworkLab — Complete Setup Guide (Step by Step)
+# Setup Guide
 
-Sve korake koje treba da uradiš, redom. Označeno gdje se izvršava: 📱 **TELEFON** ili 💻 **LAPTOP**.
+Everything is split into two parts — stuff you do on the laptop and stuff you do on the phone. Do it in order because the ML model needs to be trained on the laptop before you can copy it to the phone.
+
+Phone and laptop need to be on the same WiFi network.
 
 ---
 
-## FAZA 1 — Priprema laptop-a (VS Code / Linux Mint)
+## Part 1 — Laptop
 
-### 💻 Korak 1 — Kloniraj/Napravi projekt
+### 1. Make a GitHub repo
 
-```bash
-# Na laptopу — otvori terminal
-cd ~/Projects   # ili gdje želiš
+Go to https://github.com/new and create a new repo called `network-lab`. Set it to public. Don't add a README or .gitignore, we already have those.
 
-# Kloniraj sa GitHuba (ako si već push-ovao):
-git clone https://github.com/TVOJ_USERNAME/network-lab.git
-cd network-lab
+### 2. Initialize git and push
 
-# ILI ako još nisi napravioGitHub repo, samo raspakuj zip koji si dobio
-```
-
-### 💻 Korak 2 — Napravi GitHub repo
-
-1. Idi na https://github.com/new
-2. Ime repo-a: `network-lab`
-3. Opis: `Phone-powered network monitoring + ML anomaly detection (Termux + Flask)`
-4. Postavi na **Public**
-5. **Nemoj** dodavati README (već ga imamo)
-6. Klikni "Create repository"
+Unzip the project folder somewhere on your laptop, then open a terminal in that folder.
 
 ```bash
-# U terminalu, u network-lab/ folderu:
 git init
 git add .
-git commit -m "Initial commit: NetworkLab phone agent + Flask server + ML pipeline"
+git commit -m "initial commit"
 git branch -M main
-git remote add origin https://github.com/TVOJ_USERNAME/network-lab.git
+git remote add origin https://github.com/YOUR_USERNAME/network-lab.git
 git push -u origin main
 ```
 
-### 💻 Korak 3 — Instaliraj server zavisnosti
+### 3. Install server dependencies
 
 ```bash
-# U network-lab/server/
 cd server
 pip install -r requirements.txt
 ```
 
-Instalirat će se: Flask, Flask-SocketIO, Flask-CORS, eventlet
+This installs Flask, Flask-SocketIO, Flask-CORS and eventlet.
 
-### 💻 Korak 4 — Napravi i treniraj ML model
+### 4. Generate training data and train the ML model
 
 ```bash
-# U network-lab/
-cd ..
-
-# 4a. Instaliraj ML zavisnosti
+# from the network-lab/ root folder:
 pip install -r ml/requirements.txt
 
-# 4b. Generiši sintetičke podatke za trening
 python ml/generate_sample_data.py
-# → Pravi ml/data/training_data.csv (2000 uzoraka)
-# → Pravi ml/data/test_data.csv    (400 uzoraka)
+# creates ml/data/training_data.csv and ml/data/test_data.csv
 
-# 4c. Treniraj model
 python ml/train.py
-# → Snima ml/models/anomaly_model.pkl
-# → Snima ml/models/scaler.pkl
-# → Pravi ml/models/training_report.txt
-
-# 4d. (Opcionalno) Evaluacija sa grafovima
-python ml/evaluate.py
-# → Pravi ml/plots/evaluation.png
+# creates ml/models/anomaly_model.pkl and ml/models/scaler.pkl
 ```
 
-### 💻 Korak 5 — Pronađi svoju lokalnu IP adresu
+Optionally you can run `python ml/evaluate.py` after training to get some plots, but it's not required.
+
+### 5. Find your laptop's local IP address
+
+You'll need this to configure the phone agent.
 
 ```bash
 ip addr show | grep "inet " | grep -v 127.0.0.1
-# Primjer output-a:
-#    inet 192.168.1.105/24 brd 192.168.1.255 scope global wlan0
-# Zapamti ovu adresu! (192.168.1.105 u primjeru)
+# look for something like: inet 192.168.1.105/24 ...
+# the IP is 192.168.1.105 in this example, yours will be different
 ```
 
-### 💻 Korak 6 — Pokrenite Flask server
+Write it down.
+
+### 6. Start the Flask server
 
 ```bash
 cd server
 python app.py
-# ╔══════════════════════════════════════════╗
-# ║  NetworkLab Server  v1.0                 ║
-# ║  Dashboard → http://localhost:5000       ║
-# ╚══════════════════════════════════════════╝
 ```
 
-Otvori browser: **http://localhost:5000** — vidiš dashboard (prazan za sada).
+Open http://localhost:5000 in a browser. The dashboard will be empty for now, that's fine.
+
+Leave this terminal open, the server needs to keep running.
 
 ---
 
-## FAZA 2 — Priprema telefona (Termux)
+## Part 2 — Phone (Termux)
 
-> **Preduvjet**: Telefon i laptop su na **istoj WiFi mreži**!
+### 7. Install Termux
 
-### 📱 Korak 7 — Instaliraj Termux aplikacije
+Install from F-Droid, not the Play Store. The Play Store version is outdated and some packages won't install correctly.
 
-Na telefonu installiraj sa **F-Droid** (ne Play Store — zastarjele verzije!):
-1. **Termux** — https://f-droid.org/packages/com.termux/
-2. **Termux:API** — https://f-droid.org/packages/com.termux.api/
+- Termux: https://f-droid.org/packages/com.termux/
+- Termux:API: https://f-droid.org/packages/com.termux.api/
 
-Dozvoli **sve permissions** za Termux:API (lokacija, WiFi).
+After installing Termux:API, open it once and grant it location and WiFi permissions.
 
-### 📱 Korak 8 — Početno podešavanje Termux-a
+### 8. First time setup in Termux
 
 ```bash
-# U Termux aplikaciji:
 pkg update && pkg upgrade -y
-# (može potrajati 5-10 minuta pri prvom pokretanju)
+# this takes a while the first time, just let it run
 
-# Instaliraj git
 pkg install git -y
 ```
 
-### 📱 Korak 9 — Kloniraj projekt na telefon
+### 9. Clone the project
 
 ```bash
-# U Termux:
 cd ~
-git clone https://github.com/TVOJ_USERNAME/network-lab.git
+git clone https://github.com/YOUR_USERNAME/network-lab.git
 cd network-lab
 ```
 
-### 📱 Korak 10 — Pokreni setup skriptu
+### 10. Run the setup script
 
 ```bash
-# U Termux, u network-lab/ folderu:
 bash phone_agent/setup.sh
-# Ovo instalira sve Python pakete (može potrajati 10-15 min)
-# psutil, requests, scikit-learn, numpy...
 ```
 
-### 📱 Korak 11 — Podesi konfiguraciju
+This installs all the Python packages the agent needs (psutil, requests, scikit-learn, numpy...). It can take 10-20 minutes on the phone, scikit-learn especially takes a while to compile.
+
+### 11. Set the server URL
 
 ```bash
-# U Termux:
 nano phone_agent/config.py
 ```
 
-Promijeni ovu liniju:
+Find this line near the top:
+
 ```python
-SERVER_URL = "http://192.168.1.105:5000"   # ← Stavi SVOJU IP adresu laptopa
+SERVER_URL = "http://192.168.1.105:5000"
 ```
 
-Sačuvaj: `Ctrl+X`, zatim `Y`, zatim `Enter`
+Change the IP to your laptop's IP from step 5. Save with Ctrl+X, then Y, then Enter.
 
 ---
 
-## FAZA 3 — Prebaci ML model na telefon
+## Part 3 — Copy the ML model to the phone
 
-### 💻 Korak 12 — Posluži model fajlove sa laptopa (HTTP server)
+The model was trained on your laptop and needs to be transferred to the phone. The easiest way is to serve it over HTTP.
+
+### 12. Serve the model files from your laptop
+
+Open a new terminal tab on your laptop (keep the Flask server running in the other one):
 
 ```bash
-# Na laptopу — novi terminal tab:
 cd network-lab/ml/models
 python -m http.server 8888
-# Serving HTTP on 0.0.0.0 port 8888...
 ```
 
-### 📱 Korak 13 — Preuzmi model na telefon
+### 13. Download the model on the phone
 
 ```bash
-# U Termux:
+# in Termux:
 cd ~/network-lab/phone_agent/inference
 
-# Preuzmi model (zamijeni IP sa IP-om svog laptopa):
-curl http://192.168.1.105:8888/anomaly_model.pkl -o anomaly_model.pkl
-curl http://192.168.1.105:8888/scaler.pkl -o scaler.pkl
+curl http://YOUR_LAPTOP_IP:8888/anomaly_model.pkl -o anomaly_model.pkl
+curl http://YOUR_LAPTOP_IP:8888/scaler.pkl -o scaler.pkl
 
-# Provjeri:
-ls -lh *.pkl
-# anomaly_model.pkl   ~1.0 MB
-# scaler.pkl          ~1 KB
+# check they're there:
+ls -lh
+# anomaly_model.pkl should be around 1MB
+# scaler.pkl will be tiny, around 1KB
 ```
+
+You can stop the HTTP server on the laptop after this (Ctrl+C).
 
 ---
 
-## FAZA 4 — Pokretanje sistema
+## Part 4 — Run everything
 
-### 📱 Korak 14 — Pokrenite agent na telefonu
+### 14. Start the agent on the phone
 
 ```bash
-# U Termux:
 cd ~/network-lab/phone_agent
 python agent.py
-
-# Output koji treba da vidiš:
-#   _   _      _   _____ ___ _   _ _  __
-#  | \ | | ___| |_|_   _|_ _| \ | | |/ /
-#  ...
-#  NetworkLab Agent v1.0
-#  Device: huawei-y6-2018
-#  Server: http://192.168.1.105:5000
-#
-#  ═══ Cycle #1 ═══
-#  ⏱  Starting metric collection cycle...
-#  ✅ Collection done in 8234ms
-#  ─────────────────────────────────────
-#    📊 METRICS — 2025-01-15T14:30:00Z
-#    Latency:      avg=34.5ms  std=4.2ms
-#    Packet Loss:  0.0%
-#    HTTP Time:    312ms
-#    ✅ Network Normal    score=0.123
-#  ─────────────────────────────────────
-#  📤 Metrics sent → http://192.168.1.105:5000/api/metrics [200]
-#  ⏳ Next cycle in 30s...
 ```
 
-### 💻 Korak 15 — Pogledaj dashboard
+You should see it collecting metrics and after the first cycle it will print something like:
 
-Otvori: **http://localhost:5000**
+```
+Latency:      avg=34.5ms  std=4.2ms
+Packet Loss:  0.0%
+HTTP Time:    312ms
+Network Normal    score=0.123
+Metrics sent [200]
+Next cycle in 30s...
+```
 
-Trebalo bi vidjeti live podatke sa telefona!
+### 15. Check the dashboard
+
+Go to http://localhost:5000 on your laptop. After the first cycle finishes you'll see data starting to appear on the graphs.
 
 ---
 
-## Korisni dodatni argumenti agenta
+## Extra agent options
 
 ```bash
-# Jedno prikupljanje (za testiranje)
-python agent.py --once
-
-# Bez slanja na server (debug mode)
-python agent.py --dry-run
-
-# Bez ML inferensa (ako model nije preuzet)
-python agent.py --no-ml
-
-# Detaljni logovi
-python agent.py --debug
-
-# Brži interval (svakih 10s umjesto 30s)
-python agent.py --interval 10
+python agent.py --once        # run one cycle and exit, useful for testing
+python agent.py --dry-run     # collect metrics but don't send to server
+python agent.py --no-ml       # skip ML inference
+python agent.py --debug       # verbose logging
+python agent.py --interval 10 # send every 10s instead of 30s
 ```
 
-## Česte greške i rješenja
+---
 
-| Problem | Rješenje |
-|---|---|
-| `Cannot reach server` | Provjeri IP u config.py, provjeri da su oba uređaja na istom WiFi |
-| `ping: command not found` | `pkg install iputils` |
-| `termux-wifi-connectioninfo` ne radi | Instaliraj Termux:API app, dozvoli lokaciju |
-| `ModuleNotFoundError: psutil` | `pip install psutil` |
-| Dashboard pust | Provjeri da agent šalje podatke (vidi log u Termuxu) |
-| Model not found warning | Kopirati model.pkl na telefon (Korak 12-13) |
+## Common problems
 
-## Napomena za firewall
-
-Ako Flask server nije dostupan sa telefona, možda trebaš otvoriti port:
-
+**Cannot reach server**
+Check that the IP in config.py is correct. Make sure both devices are on the same WiFi. If it still doesn't work, try opening the port:
 ```bash
-# Na laptopу:
 sudo ufw allow 5000
 ```
+
+**ping: command not found**
+```bash
+pkg install iputils
+```
+
+**termux-wifi-connectioninfo not found**
+Make sure the Termux:API app is installed from F-Droid and that you gave it permissions. Then:
+```bash
+pkg install termux-api
+```
+
+**ModuleNotFoundError: psutil (or any other package)**
+```bash
+pip install psutil
+```
+
+**Dashboard loads but no data appears**
+Look at the Termux terminal to see if the agent is actually sending data. Look at the Flask terminal on the laptop to see if it's receiving anything. Usually it's the IP address in config.py being wrong.
+
+**Model not found warning on the phone**
+The agent still works without it, just without anomaly detection. Follow steps 12-13 to copy the model over.
