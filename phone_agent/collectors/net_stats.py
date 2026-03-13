@@ -1,5 +1,4 @@
 """
-Reads network via psutil
 Calculates per-second rates by diffing two snapshots separated
 by `interval` seconds. Also resolves DNS timing.
 
