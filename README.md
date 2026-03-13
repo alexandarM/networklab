@@ -10,7 +10,7 @@ The idea was to use the phone as some kind of network monitoring device since it
 
 - Pings a few DNS servers every 30 seconds and measures latency/packet loss
 - Measures HTTP response times to a few websites
-- Reads network interface stats (download/upload speeds) through psutil
+- Reads network interface stats (download/upload speeds) directly from /proc/net/dev
 - Gets WiFi signal strength through Termux:API
 - Runs an Isolation Forest model locally on the phone to detect if something looks off with the network
 - Sends all of this to a Flask server running on my laptop
@@ -41,7 +41,7 @@ The idea was to use the phone as some kind of network monitoring device since it
 
 ## Tech stack
 
-- Phone agent: Python, psutil, requests, scikit-learn
+- Phone agent: Python, requests, scikit-learn (psutil dropped due to Android incompatibility)
 - Network probes: subprocess ping, urllib, socket, Termux:API
 - ML: scikit-learn Isolation Forest
 - Server: Flask, Flask-SocketIO
@@ -53,7 +53,7 @@ The idea was to use the phone as some kind of network monitoring device since it
 ## Project structure
 
 ```
-network-lab/
+networklab/
 ├── phone_agent/
 │   ├── agent.py              # main script, this is what you run on the phone
 │   ├── config.py             # put your laptop IP here before running
@@ -88,8 +88,8 @@ Full step-by-step instructions are in [SETUP_GUIDE.md](SETUP_GUIDE.md). Short ve
 ### Laptop
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/network-lab.git
-cd network-lab
+git clone https://github.com/YOUR_USERNAME/networklab.git
+cd networklab
 
 # install server dependencies
 pip install -r server/requirements.txt
@@ -114,8 +114,8 @@ Dashboard will be at `http://localhost:5000`
 pkg update && pkg upgrade -y
 pkg install git -y
 
-git clone https://github.com/YOUR_USERNAME/network-lab.git
-cd network-lab
+git clone https://github.com/YOUR_USERNAME/networklab.git
+cd networklab
 
 bash phone_agent/setup.sh
 ```
@@ -130,7 +130,7 @@ cd ml/models
 python -m http.server 8888
 
 # on phone (Termux):
-cd ~/network-lab/phone_agent/inference
+cd ~/networklab/phone_agent/inference
 curl http://YOUR_LAPTOP_IP:8888/anomaly_model.pkl -o anomaly_model.pkl
 curl http://YOUR_LAPTOP_IP:8888/scaler.pkl -o scaler.pkl
 ```
@@ -138,7 +138,7 @@ curl http://YOUR_LAPTOP_IP:8888/scaler.pkl -o scaler.pkl
 Then start the agent:
 
 ```bash
-cd ~/network-lab/phone_agent
+cd ~/networklab/phone_agent
 python agent.py
 ```
 
@@ -160,7 +160,7 @@ Some things don't work without root, so workarounds were used:
 
 | What | Root needed | What I used instead |
 |---|---|---|
-| tcpdump / packet capture | yes | psutil interface counters |
+| tcpdump / packet capture | yes | /proc/net/dev directly |
 | raw sockets | yes | subprocess ping |
 | WiFi monitor mode | yes | Termux:API |
 | ARP scan | yes | HTTP probes |
@@ -171,6 +171,7 @@ Some things don't work without root, so workarounds were used:
 
 - Phone needs to be on the same WiFi network as the laptop
 - Termux:API app needs to be installed separately from F-Droid (not Play Store)
+- psutil doesn't work on Android so net_stats.py reads /proc/net/dev directly instead — same data, no package needed
 - The generated training data is synthetic — after collecting a few hours of real data from the phone you can retrain the model on that instead, it'll be more accurate
 
 ---
