@@ -1,0 +1,9 @@
+# phone_agent/requirements.txt
+# Install on Termux:  pip install -r requirements.txt
+
+requests==2.31.0
+psutil==5.9.8
+scikit-learn==1.3.2
+numpy==1.26.4
+joblib==1.3.2
+colorlog==6.8.2

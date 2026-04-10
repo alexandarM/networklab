@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NetworkLab Dashboard</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+  <style>
+    /* ── Variables ── */
+    :root {
+      --bg:        #0d1117;
+      --bg2:       #161b22;
+      --bg3:       #21262d;
+      --border:    #30363d;
+      --text:      #e6edf3;
+      --text2:     #8b949e;
+      --green:     #3fb950;
+      --blue:      #58a6ff;
+      --orange:    #d29922;
+      --red:       #f85149;
+      --purple:    #bc8cff;
+      --cyan:      #39d353;
+      --radius:    8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; }
+    .logo span { color: var(--blue); }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite;
+    }
+    .status-dot.offline { background: var(--red); box-shadow: 0 0 8px var(--red); animation: none; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    #last-update { color: var(--text2); font-size: 12px; }
+
+    /* ── Layout ── */
+    main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+
+    /* ── Stats cards row ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      transition: border-color .2s;
+    }
+    .stat-card:hover { border-color: var(--blue); }
+    .stat-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text2);
+      margin-bottom: 8px;
+    }
+    .stat-value {
+      font-size: 26px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .stat-unit { font-size: 12px; color: var(--text2); margin-left: 2px; font-weight: 400; }
+    .stat-sub { font-size: 11px; color: var(--text2); margin-top: 6px; }
+    .green { color: var(--green); }
+    .blue  { color: var(--blue); }
+    .orange { color: var(--orange); }
+    .red   { color: var(--red); }
+    .purple { color: var(--purple); }
+
+    /* ── Charts grid ── */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+    .chart-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .chart-card.full-width { grid-column: 1 / -1; }
+    .chart-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 12px;
+    }
+    .chart-wrap { position: relative; height: 200px; }
+
+    /* ── Anomaly table ── */
+    .anomaly-section {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge {
+      background: var(--red);
+      color: white;
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      color: var(--text2);
+      border-bottom: 1px solid var(--border);
+      font-weight: 500;
+    }
+    td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      font-variant-numeric: tabular-nums;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg3); }
+    .tag-anomaly {
+      background: rgba(248,81,73,0.15);
+      color: var(--red);
+      border: 1px solid rgba(248,81,73,0.3);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
+    }
+    .empty-state { color: var(--text2); text-align: center; padding: 24px; }
+
+    /* ── Toast notification ── */
+    #toast-container {
+      position: fixed;
+      top: 70px;
+      right: 20px;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      background: var(--bg2);
+      border: 1px solid var(--red);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      max-width: 340px;
+      animation: slideIn .3s ease;
+      box-shadow: 0 4px 20px rgba(0,0,0,.4);
+    }
+    .toast-title { font-weight: 600; color: var(--red); margin-bottom: 4px; }
+    .toast-body { font-size: 12px; color: var(--text2); }
+    @keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span>Network</span>Lab
+    <span style="color:var(--text2);font-size:12px;font-weight:400">— Real-time Monitor</span>
+  </div>
+  <div class="header-right">
+    <span id="last-update">Waiting for data...</span>
+    <div id="status-dot" class="status-dot offline" title="Connection status"></div>
+  </div>
+</header>
+
+<main>
+
+  <!-- Stats row -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Avg Latency</div>
+      <div class="stat-value blue" id="s-latency">—<span class="stat-unit">ms</span></div>
+      <div class="stat-sub" id="s-latency-range">min/max: —</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Packet Loss</div>
+      <div class="stat-value green" id="s-loss">—<span class="stat-unit">%</span></div>
+      <div class="stat-sub" id="s-hosts">hosts reachable: —</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">HTTP Response</div>
+      <div class="stat-value blue" id="s-http">—<span class="stat-unit">ms</span></div>
+      <div class="stat-sub" id="s-http-ok">success rate: —</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">DNS Time</div>
+      <div class="stat-value purple" id="s-dns">—<span class="stat-unit">ms</span></div>
+      <div class="stat-sub">avg resolution</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Download</div>
+      <div class="stat-value green" id="s-dl">—<span class="stat-unit">B/s</span></div>
+      <div class="stat-sub" id="s-dl-unit"></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Upload</div>
+      <div class="stat-value cyan" id="s-ul">—<span class="stat-unit">B/s</span></div>
+      <div class="stat-sub" id="s-ul-unit"></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">WiFi Signal</div>
+      <div class="stat-value orange" id="s-wifi">—<span class="stat-unit">dBm</span></div>
+      <div class="stat-sub" id="s-wifi-q">quality: —</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">ML Anomaly</div>
+      <div class="stat-value" id="s-anomaly">—</div>
+      <div class="stat-sub" id="s-anomaly-reason">—</div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">Latency (ms)</div>
+      <div class="chart-wrap"><canvas id="chart-latency"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Packet Loss (%)</div>
+      <div class="chart-wrap"><canvas id="chart-loss"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">HTTP Response Time (ms)</div>
+      <div class="chart-wrap"><canvas id="chart-http"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">WiFi Signal (dBm)</div>
+      <div class="chart-wrap"><canvas id="chart-wifi"></canvas></div>
+    </div>
+    <div class="chart-card full-width">
+      <div class="chart-title">Network I/O — Download & Upload (bytes/s)</div>
+      <div class="chart-wrap"><canvas id="chart-io"></canvas></div>
+    </div>
+    <div class="chart-card full-width">
+      <div class="chart-title">ML Anomaly Score (0 = normal, 1 = anomaly)</div>
+      <div class="chart-wrap"><canvas id="chart-anomaly"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Anomaly table -->
+  <div class="anomaly-section">
+    <div class="section-title">
+      Recent Anomaly Events
+      <span class="badge" id="anomaly-count">0</span>
+    </div>
+    <table id="anomaly-table">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Latency</th>
+          <th>Packet Loss</th>
+          <th>Anomaly Score</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody id="anomaly-tbody">
+        <tr><td colspan="5" class="empty-state">No anomalies detected yet.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script>
+// Chart.js global defaults 
+Chart.defaults.color = '#8b949e';
+Chart.defaults.borderColor = '#30363d';
+Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+Chart.defaults.font.size = 11;
+
+const MAX_POINTS = 60;
+
+// create a line chart 
+function makeChart(id, label, color, fill = false) {
+  const ctx = document.getElementById(id).getContext('2d');
+  return new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label,
+        data: [],
+        borderColor: color,
+        backgroundColor: fill ? color + '22' : 'transparent',
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        tension: 0.3,
+        fill,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 300 },
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 8, maxRotation: 0 }, grid: { color: '#21262d' } },
+        y: { ticks: { maxTicksLimit: 6 }, grid: { color: '#21262d' }, beginAtZero: true },
+      }
+    }
+  });
+}
+
+// Multi-line chart for I/O
+function makeIOChart() {
+  const ctx = document.getElementById('chart-io').getContext('2d');
+  return new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label: 'Download (B/s)',
+          data: [],
+          borderColor: '#3fb950',
+          backgroundColor: '#3fb95022',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.3,
+          fill: true,
+        },
+        {
+          label: 'Upload (B/s)',
+          data: [],
+          borderColor: '#58a6ff',
+          backgroundColor: '#58a6ff22',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.3,
+          fill: true,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 300 },
+      plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 12 } } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 8, maxRotation: 0 }, grid: { color: '#21262d' } },
+        y: { ticks: { maxTicksLimit: 6 }, grid: { color: '#21262d' }, beginAtZero: true },
+      }
+    }
+  });
+}
+
+// Create all charts 
+const charts = {
+  latency: makeChart('chart-latency', 'Latency avg (ms)', '#58a6ff', true),
+  loss:    makeChart('chart-loss',    'Packet Loss (%)', '#f85149', true),
+  http:    makeChart('chart-http',    'HTTP (ms)', '#bc8cff', false),
+  wifi:    makeChart('chart-wifi',    'WiFi Signal (dBm)', '#d29922', false),
+  io:      makeIOChart(),
+  anomaly: makeChart('chart-anomaly', 'Anomaly Score', '#f85149', true),
+};
+
+//  Utilities 
+function fmtTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleTimeString();
+}
+
+function fmtBytes(b) {
+  if (b === null || b === undefined) return '—';
+  if (b > 1e6) return (b / 1e6).toFixed(1) + ' MB/s';
+  if (b > 1e3) return (b / 1e3).toFixed(1) + ' KB/s';
+  return b.toFixed(0) + ' B/s';
+}
+
+function pushData(chart, label, ...values) {
+  chart.data.labels.push(label);
+  values.forEach((v, i) => {
+    chart.data.datasets[i].data.push(v ?? null);
+  });
+  // Trim to MAX_POINTS
+  if (chart.data.labels.length > MAX_POINTS) {
+    chart.data.labels.shift();
+    chart.data.datasets.forEach(d => d.shift && d.data.shift());
+  }
+  chart.update('none');
+}
+
+function setText(id, value, unit = '') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = (value !== null && value !== undefined)
+    ? `${value}${unit ? `<span class="stat-unit">${unit}</span>` : ''}`
+    : '—';
+}
+
+// Update dashboard with new metrics 
+function updateDashboard(m) {
+  const t = fmtTime(m.timestamp);
+
+  // Update stat cards
+  setText('s-latency', m.latency_avg ?? '—', 'ms');
+  document.getElementById('s-latency-range').textContent =
+    `min/max: ${m.latency_min ?? '?'}/${m.latency_max ?? '?'} ms`;
+
+  const lossVal = m.packet_loss ?? 0;
+  const lossEl = document.getElementById('s-loss');
+  lossEl.innerHTML = `${lossVal}<span class="stat-unit">%</span>`;
+  lossEl.className = `stat-value ${lossVal > 5 ? 'red' : lossVal > 1 ? 'orange' : 'green'}`;
+
+  document.getElementById('s-hosts').textContent =
+    `hosts reachable: ${m.hosts_reachable ?? '?'}`;
+
+  setText('s-http', m.http_response_time ?? '—', 'ms');
+  document.getElementById('s-http-ok').textContent =
+    `success rate: ${m.http_success_rate ?? '?'}%`;
+
+  setText('s-dns', m.dns_time ?? '—', 'ms');
+
+  document.getElementById('s-dl').textContent = fmtBytes(m.bytes_recv_rate);
+  document.getElementById('s-ul').textContent = fmtBytes(m.bytes_sent_rate);
+
+  const sig = m.wifi_signal;
+  const sigEl = document.getElementById('s-wifi');
+  sigEl.innerHTML = `${sig ?? '—'}<span class="stat-unit">dBm</span>`;
+  sigEl.className = `stat-value ${sig < -75 ? 'red' : sig < -65 ? 'orange' : 'green'}`;
+  document.getElementById('s-wifi-q').textContent =
+    `quality: ${m.wifi_signal_quality ?? '?'}%`;
+
+  // Anomaly card
+  const anomEl = document.getElementById('s-anomaly');
+  if (m.is_anomaly) {
+    anomEl.innerHTML = `<span class="red">ANOMALY</span>`;
+    document.getElementById('s-anomaly-reason').textContent =
+      m.anomaly_reason ?? '';
+  } else {
+    anomEl.innerHTML = `<span class="green">NORMAL</span>`;
+    document.getElementById('s-anomaly-reason').textContent =
+      `score: ${m.anomaly_score ?? 0}`;
+  }
+
+  // Push to charts
+  pushData(charts.latency, t, m.latency_avg);
+  pushData(charts.loss,    t, m.packet_loss);
+  pushData(charts.http,    t, m.http_response_time);
+  pushData(charts.wifi,    t, m.wifi_signal);
+  pushData(charts.io,      t, m.bytes_recv_rate, m.bytes_sent_rate);
+  pushData(charts.anomaly, t, m.anomaly_score ?? 0);
+
+  document.getElementById('last-update').textContent = `Last update: ${t}`;
+}
+
+// Load history into charts 
+function loadHistory(rows) {
+  rows.forEach(m => updateDashboard(m));
+}
+
+// Anomaly table 
+let anomalyCount = 0;
+function addAnomalyRow(m) {
+  const tbody = document.getElementById('anomaly-tbody');
+  // Remove empty state row
+  if (tbody.querySelector('.empty-state')) {
+    tbody.innerHTML = '';
+  }
+  anomalyCount++;
+  document.getElementById('anomaly-count').textContent = anomalyCount;
+
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>${fmtTime(m.timestamp)}</td>
+    <td>${m.latency_avg ?? '?'} ms</td>
+    <td>${m.packet_loss ?? '?'}%</td>
+    <td><span class="tag-anomaly">${(m.anomaly_score ?? 0).toFixed(3)}</span></td>
+    <td>${m.anomaly_reason ?? m.reason ?? '—'}</td>
+  `;
+  tbody.insertBefore(tr, tbody.firstChild);
+
+  // Keep max 20 rows
+  while (tbody.children.length > 20) tbody.removeChild(tbody.lastChild);
+}
+
+// Toast notification 
+function showToast(title, body) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = `<div class="toast-title"> ${title}</div><div class="toast-body">${body}</div>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity .4s';
+    setTimeout(() => toast.remove(), 400);
+  }, 5000);
+}
+
+// Socket.IO connection 
+const socket = io();
+const dot = document.getElementById('status-dot');
+
+socket.on('connect', () => {
+  dot.classList.remove('offline');
+  console.log('Connected to server');
+});
+
+socket.on('disconnect', () => {
+  dot.classList.add('offline');
+  document.getElementById('last-update').textContent = 'Disconnected from server';
+});
+
+socket.on('history', (rows) => {
+  loadHistory(rows);
+});
+
+socket.on('new_metrics', (m) => {
+  updateDashboard(m);
+  if (m.is_anomaly) addAnomalyRow(m);
+});
+
+socket.on('anomaly_alert', (alert) => {
+  showToast(
+    'Network Anomaly Detected',
+    alert.reason || `Score: ${alert.score}`
+  );
+});
+
+// Fetch recent anomalies on load 
+fetch('/api/anomalies?limit=10')
+  .then(r => r.json())
+  .then(data => data.forEach(m => addAnomalyRow(m)))
+  .catch(() => {});
+
+// Fallback: poll API if WebSocket unavailable 
+let lastId = 0;
+setInterval(() => {
+  if (!socket.connected) {
+    fetch('/api/data?limit=5')
+      .then(r => r.json())
+      .then(rows => {
+        rows.forEach(m => {
+          if (m.id > lastId) {
+            lastId = m.id;
+            updateDashboard(m);
+          }
+        });
+      })
+      .catch(() => {});
+  }
+}, 10000);
+</script>
+</body>
+</html>

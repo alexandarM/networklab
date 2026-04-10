@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Environment variables
+.env
+*.env
+
+# ML models (large files — commit only via Git LFS or exclude)
+*.pkl
+*.joblib
+*.h5
+*.model
+# Allow gitkeep
+!ml/models/.gitkeep
+!phone_agent/inference/.gitkeep
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+server/data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Coverage
+.coverage
+htmlcov/

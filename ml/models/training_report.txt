@@ -1,0 +1,31 @@
+Model Training Report
+Generated: 2026-03-10T12:15:52.021757
+==================================================
+Training data:  /home/iks/Desktop/network-lab/ml/data/training_data.csv
+Train samples:  1600
+Test samples:   400
+Features:       latency_avg, latency_std, latency_min, latency_max, packet_loss, http_response_time, bytes_sent_rate, bytes_recv_rate, dns_time, wifi_signal
+
+Model: IsolationForest
+  n_estimators=200
+  contamination=0.046875
+  random_state=42
+
+Results:
+  Precision: 0.9500
+  Recall:    1.0000
+  F1 Score:  0.9744
+  ROC-AUC:   1.0
+
+              precision    recall  f1-score   support
+
+      Normal       1.00      1.00      1.00       381
+     Anomaly       0.95      1.00      0.97        19
+
+    accuracy                           1.00       400
+   macro avg       0.97      1.00      0.99       400
+weighted avg       1.00      1.00      1.00       400
+
+Confusion Matrix:
+  TN=380  FP=1
+  FN=0  TP=19
