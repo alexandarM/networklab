@@ -38,9 +38,9 @@ mkdir -p phone_agent/inference
 # ── 5. Termux:API check ────────────────────────────────────
 echo "[5/6] Checking Termux:API..."
 if command -v termux-wifi-connectioninfo &> /dev/null; then
-    echo "    ✅ Termux:API is available"
+    echo "    Termux:API is available"
 else
-    echo "    ⚠️  Termux:API not found."
+    echo "    Termux:API not found."
     echo "       Install 'Termux:API' app from F-Droid, then:"
     echo "       pkg install termux-api"
 fi
@@ -49,7 +49,7 @@ fi
 echo "[6/6] Permission reminder..."
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo " ✅ Setup complete!"
+echo " Setup complete!"
 echo ""
 echo " Next steps:"
 echo "   1. Edit phone_agent/config.py"
